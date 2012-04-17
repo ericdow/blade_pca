@@ -4,6 +4,51 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from scipy.interpolate import *
 
+def read_mode(path):
+    lines = file(path).readlines()
+
+    cdim = int(lines[0].split()[1])
+    sdim = int(lines[1].split()[1])
+
+    lines = lines[2:]
+
+    V = array([line.strip().split()[0] for line in lines], float).T 
+    nc = V.size
+    
+    if (nc != cdim*sdim):
+        print 'Error: number of coordinates read'
+        
+    V = reshape(V, (cdim,sdim))
+    
+    return cdim, sdim, V   
+
+def read_mesh_surf(path):
+    lines = file(path).readlines()
+
+    cdim = int(lines[0].split()[1])
+    sdim = int(lines[1].split()[1])
+
+    lines = lines[2:]
+    
+    x = array([line.strip().split()[0] for line in lines], float).T
+    y = array([line.strip().split()[1] for line in lines], float).T
+    z = array([line.strip().split()[2] for line in lines], float).T
+    nc = x.size
+
+    if (nc != cdim*sdim):
+        print 'Error: number of coordinates read'
+
+    x = reshape(x, (cdim,sdim))
+    y = reshape(y, (cdim,sdim))
+    z = reshape(z, (cdim,sdim))
+
+    xyz = zeros((sdim,cdim,3))
+    xyz[:,:,0] = x.T
+    xyz[:,:,1] = y.T
+    xyz[:,:,2] = z.T
+ 
+    return xyz
+
 def read_coords(path):
     lines = file(path).readlines()
 
@@ -114,17 +159,66 @@ def calcNormals3d(xyz):
     # create bivariate b-spline representation of surface
     nsec = xyz.shape[0]
     npps = xyz.shape[1]
-    # number of nodes to the left and right to use in fitting
-    nlr = 5
-    for i in range(npps):
-        if (i < nlr):
-            xyzl = vstack(xyz[:,npps-
-        elif (i > npps-nlr-1):
+    # tau1, tau2 : tangent vectors along blade surface
+    tau1 = zeros(xyz.shape)
+    tau2 = zeros(xyz.shape)
+    # n : normal vector 
+    n = zeros(xyz.shape)
+    for isec in range(nsec):
+        tck,u = splprep([xyz[isec,:,0],xyz[isec,:,1],xyz[isec,:,2]],s=0,per=1)
+        deriv = splev(u,tck,der=1)
+        tau1[isec,:,:] = vstack((vstack((deriv[0],deriv[1])),deriv[2])).T
+        norm = sqrt(tau1[isec,:,0]**2 + tau1[isec,:,1]**2 + tau1[isec,:,2]**2)
+        tau1[isec,:,0] /= norm
+        tau1[isec,:,1] /= norm
+        tau1[isec,:,2] /= norm
+    for ipps in range(npps):
+        tck,u = splprep([xyz[:,ipps,0],xyz[:,ipps,1],xyz[:,ipps,2]],s=0)
+        deriv = splev(u,tck,der=1)
+        tau2[:,ipps,:] = vstack((vstack((deriv[0],deriv[1])),deriv[2])).T
+        norm = sqrt(tau2[:,ipps,0]**2 + tau2[:,ipps,1]**2 + tau2[:,ipps,2]**2)
+        tau2[:,ipps,0] /= norm
+        tau2[:,ipps,1] /= norm
+        tau2[:,ipps,2] /= norm
+    for isec in range(nsec):
+        n[isec,:,:] = cross(tau1[isec,:,:],tau2[isec,:,:]) 
+        norm = sqrt(n[isec,:,0]**2 + n[isec,:,1]**2 + n[isec,:,2]**2)
+        n[isec,:,0] /= norm
+        n[isec,:,1] /= norm
+        n[isec,:,2] /= norm
 
-        else:
-            xyzl = xyz[:,i-nlr:i+nlr+1,:]
+    return n,tau1,tau2
 
+def ray_plane_inter(pn,nn,pm,nm,tau1m,tau2m):
+    w0 = pn - pm
+    a = -dot(nm,w0)
+    b = dot(nm,nn)
+    r = a / b
 
+def calcError(xyzn,nn,xyzm,nm):
+    # inputs
+    # xyzn  : points on the nominal surface
+    # nn    : normal to the nominal surface
+    # xyzm  : points on the measured surface
+    # nm    : normal to the measured surface
+    # returns
+    # e     : error (measured - nominal)
+    nsec = xyzn.shape[0]
+    npps = xyzn.shape[1]
+    xyzn = reshape(xyzn,(nsec*npps,3))
+    nn = reshape(nn,(nsec*npps,3))
+    xyzm = reshape(xyzm,(nsec*npps,3))
+    nm = reshape(nm,(nsec*npps,3))
+
+    w0 = xyzn - xyzm
+    a = -(nm[:,0]*w0[:,0] + nm[:,1]*w0[:,1] + nm[:,2]*w0[:,2])
+    b =  (nm[:,0]*nn[:,0] + nm[:,1]*nn[:,1] + nm[:,2]*nn[:,2])
+    e = a / b
+    
+    e = reshape(e,(nsec,npps))
+
+    return e
+ 
 def mapBlades(xyzn,xyz,icut,N):
     zcut = xyzn[icut,0,2]
     xyn = xyzn[icut,:,:-1]
@@ -283,6 +377,45 @@ def calcMeanCamber(xy):
         thick[i] = d[j]/2
 
     return xymc, thick
+    
+def xyz2st(x,y,z):
+    s0 = sum(sqrt((x[1:,0]-x[0:-1,0])**2 +\
+                  (y[1:,0]-y[0:-1,0])**2 +\
+                  (z[1:,0]-z[0:-1,0])**2))
+    sN = sum(sqrt((x[1:,-1]-x[0:-1,-1])**2 +\
+                  (y[1:,-1]-y[0:-1,-1])**2 +\
+                  (z[1:,-1]-z[0:-1,-1])**2))
+
+    if (s0 > sN):
+        s = cumsum(sqrt((x[1:,0]-x[0:-1,0])**2 +\
+                        (y[1:,0]-y[0:-1,0])**2 +\
+                        (z[1:,0]-z[0:-1,0])**2))
+        s = hstack((0.,s))
+    else: 
+        s = cumsum(sqrt((x[1:,-1]-x[0:-1,-1])**2 +\
+                        (y[1:,-1]-y[0:-1,-1])**2 +\
+                        (z[1:,-1]-z[0:-1,-1])**2))
+        s = hstack((0.,s))
+
+    t0 = sum(sqrt((x[0,1:]-x[0,0:-1])**2 +\
+                  (y[0,1:]-y[0,0:-1])**2 +\
+                  (z[0,1:]-z[0,0:-1])**2))
+    tN = sum(sqrt((x[-1,1:]-x[-1,0:-1])**2 +\
+                  (y[-1,1:]-y[-1,0:-1])**2 +\
+                  (z[-1,1:]-z[-1,0:-1])**2))
+
+    if (t0 > tN):
+        t = cumsum(sqrt((x[0,1:]-x[0,0:-1])**2 +\
+                        (y[0,1:]-y[0,0:-1])**2 +\
+                        (z[0,1:]-z[0,0:-1])**2))
+        t = hstack((0.,t))
+    else: 
+        t = cumsum(sqrt((x[-1,1:]-x[-1,0:-1])**2 +\
+                        (y[-1,1:]-y[-1,0:-1])**2 +\
+                        (z[-1,1:]-z[-1,0:-1])**2))
+        t = hstack((0.,t))
+
+    return s, t
  
 def calcCorrelation(icut,mpath,npath,N):
     # read measured blades
