@@ -2,7 +2,6 @@ from numpy import *
 import pylab
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
-from scipy.interpolate import *
 
 # http://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/SURF-INT-global.html
 # http://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/PARA-surface.html
@@ -184,55 +183,59 @@ def interp_surf(Q,k,l):
 
     return P, u, v, s, t
 
-m = 5
-n = 10
-Q = zeros((m+1,n+1,3))
-s = linspace(0.,1.,m+1)
-t = linspace(0.,1.,n+1)
-Q[:,:,0], Q[:,:,1] = meshgrid(t,s)
-for i in range(m+1):
-    for j in range(n+1):
-        Q[i,j,2] = s[i]*t[j]
-
-k = l = 4
-
-P, u, v, s, t = interp_surf(Q,k,l)
-
-uu = linspace(0.,1.,20)
-vv = linspace(0.,1.,20)
-S = zeros((len(uu),len(vv),3))
-for i in range(len(uu)):
-    for j in range(len(vv)):
-        S[i,j,:] = eval_surf(k,l,s,t,P,uu[i],vv[j])
-
-fig = pylab.figure()
-ax = Axes3D(fig)
-ax.plot_surface(S[:,:,0], S[:,:,1], S[:,:,2], rstride=1, cstride=1, cmap = cm.jet)
-for i in range(m+1):
-    ax.plot(Q[i,:,0],Q[i,:,1],Q[i,:,2],'k*')
-pylab.show()
-
-'''
-k = 4
-np = 15
-Q = zeros((np,3))
-s = linspace(0.,1.,np)
-for i in range(np):
-    Q[i,0] = cos(s[i])
-    Q[i,1] = sin(s[i])
-    Q[i,2] = s[i]
-
-P, u, t = interp_curve(Q,k)
-
-uu = linspace(0.,1.,100)
-S = zeros((len(uu),3)) 
-for i in range(len(uu)):
-    S[i,:] = eval_curve(k,t,P,uu[i])
+def surf_test():
+    m = 5
+    n = 11
+    Q = zeros((m+1,n+1,3))
+    s = linspace(0.,1.,m+1)
+    t = linspace(0.,1.,n+1)
+    Q[:,:,0], Q[:,:,1] = meshgrid(t,s)
+    for i in range(m+1):
+        for j in range(n+1):
+            Q[i,j,2] = cos(6*s[i])*sin(4*t[j])*t[j]
     
-fig = pylab.figure()
-ax = Axes3D(fig)
-ax.plot(Q[:,0], Q[:,1], Q[:,2],'*')
-ax.plot(S[:,0], S[:,1], S[:,2])
-pylab.show()
-'''
+    k = l = 4
+    
+    P, u, v, s, t = interp_surf(Q,k,l)
+
+    return k,l,s,t,P
+    
+    '''
+    uu = linspace(0.,1.,20)
+    vv = linspace(0.,1.,20)
+    S = zeros((len(uu),len(vv),3))
+    for i in range(len(uu)):
+        for j in range(len(vv)):
+            S[i,j,:] = eval_surf(k,l,s,t,P,uu[i],vv[j])
+   
+    fig = pylab.figure()
+    ax = Axes3D(fig)
+    ax.plot_surface(S[:,:,0], S[:,:,1], S[:,:,2], rstride=1, cstride=1, cmap = cm.jet)
+    for i in range(m+1):
+        ax.plot(Q[i,:,0],Q[i,:,1],Q[i,:,2],'k*')
+    pylab.show()
+    '''
+    
+def curve_test():    
+    k = 4
+    np = 15
+    Q = zeros((np,3))
+    s = linspace(0.,1.,np)
+    for i in range(np):
+        Q[i,0] = cos(s[i])
+        Q[i,1] = sin(s[i])
+        Q[i,2] = s[i]
+    
+    P, u, t = interp_curve(Q,k)
+    
+    uu = linspace(0.,1.,100)
+    S = zeros((len(uu),3)) 
+    for i in range(len(uu)):
+        S[i,:] = eval_curve(k,t,P,uu[i])
+        
+    fig = pylab.figure()
+    ax = Axes3D(fig)
+    ax.plot(Q[:,0], Q[:,1], Q[:,2],'*')
+    ax.plot(S[:,0], S[:,1], S[:,2])
+    pylab.show()
 
