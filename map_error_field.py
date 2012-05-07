@@ -36,7 +36,13 @@ xyzn_tmp = reshape(xyzn,(nsec*npps,3))
 th_n = mean(arctan2(xyzn_tmp[:,2],xyzn_tmp[:,1]))
 x_n = mean(xyzn_tmp[:,0])
 
+nt = xyz_mesh.shape[0]
+ns = xyz_mesh.shape[1]
+
 # interpolate the measured blades and write them to a file
+xe_r37 = zeros((n,nt,ns))
+xe_r5 = zeros((n,nsec,npps))
+
 for i in range(n):
 
     # rotate the measured blades so the average angle agrees
@@ -59,8 +65,10 @@ for i in range(n):
     nm, tau1m, tau2m = calcNormals3d(xyzm)
     # calculate the error in the normal direction for this blade
     xe = calcError(xyzn,nn,xyzm,nm)
+    xe_r5[i,:,:] = xe
 
     V2 = transform_mode(xyzn,xe,xyz_mesh,ntip)
+    xe_r37[i,:,:] = V2
 
     fname = 'blade'+str(i+1)+'.dat'
     f = open(data_dir+fname,'w')
@@ -70,3 +78,22 @@ for i in range(n):
         for j in arange(V2.shape[0]):
             f.write('%e\n' % V2[j,i])
     f.close()
+
+xnom = zeros((npps+1,nsec))
+ynom = zeros((npps+1,nsec))
+znom = zeros((npps+1,nsec))
+xnom[:-1,:] = xyzn[:,:,0].T
+ynom[:-1,:] = xyzn[:,:,1].T
+znom[:-1,:] = xyzn[:,:,2].T
+xnom[-1,:] = xnom[0,:]
+ynom[-1,:] = ynom[0,:]
+znom[-1,:] = znom[0,:]
+Vp = zeros((n,npps+1,nsec))
+for i in range(n):
+    Vp[i,:-1,:] = xe_r5[i,:,:].T
+Vp[:,-1,:] = Vp[:,0,:]
+write_tecplot.write_blade_surf(xnom,ynom,znom,Vp,'errors_r5.dat')
+xmesh = xyz_mesh[:,:,0]
+ymesh = xyz_mesh[:,:,1]
+zmesh = xyz_mesh[:,:,2]
+write_tecplot.write_blade_surf(xmesh,ymesh,zmesh,xe_r37,'errors_r37.dat')

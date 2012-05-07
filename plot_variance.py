@@ -30,14 +30,27 @@ m = 2
 xyzn = read_coords(npath)
 nn, tau1n, tau2n = calcNormals3d(xyzn)
 
-# center the measured data
-xyzn_center = array([mean(xyzn[:,:,0]),mean(xyzn[:,:,1])])
+# center the blades
+xyzn_tmp = reshape(xyzn,(nsec*npps,3))
+th_n = mean(arctan2(xyzn_tmp[:,2],xyzn_tmp[:,1]))
+x_n = mean(xyzn_tmp[:,0])
 for i in range(n):
-    xyz_center = array([mean(xyz[i,:,:,0]),mean(xyz[i,:,:,1])])
-    dx = xyzn_center[0] - xyz_center[0] 
-    dy = xyzn_center[1] - xyz_center[1]
-    xyz[i,:,:,0] += dx
-    xyz[i,:,:,1] += dy
+
+    # rotate the measured blades so the average angle agrees
+    # with the nominal blade
+    xyzm = copy(xyz[i,:,:,:])
+    xm = reshape(xyzm[:,:,0],(nsec*npps))
+    ym = reshape(xyzm[:,:,1],(nsec*npps))
+    zm = reshape(xyzm[:,:,2],(nsec*npps))
+    th_m = arctan2(zm,ym)
+    r_m = sqrt(ym**2 + zm**2)
+    dth = th_n - mean(th_m)
+    ym = r_m*cos(th_m+dth)
+    zm = r_m*sin(th_m+dth)
+    xm = xm - mean(xm) + x_n
+    xyz[i,:,:,0] = reshape(xm,(nsec,npps))
+    xyz[i,:,:,1] = reshape(ym,(nsec,npps))
+    xyz[i,:,:,2] = reshape(zm,(nsec,npps))    
 
 # compute the chord at the hub to normalize by
 x0 = xyzn[0,:,:-1]

@@ -1,6 +1,6 @@
-import pylab, os, math, string
 from numpy import *
 from read_blades import *
+import write_tecplot
 
 def calc_pca(mpath, npath, icut):
     # read measured blades
@@ -319,7 +319,7 @@ def calc_pca3D(mpath, npath):
     th_n = mean(arctan2(xyzn_tmp[:,2],xyzn_tmp[:,1]))
     x_n = mean(xyzn_tmp[:,0])
 
-    # interpolate the measured blades and write them to a file
+    # center the blades
     for i in range(n):
     
         # rotate the measured blades so the average angle agrees
@@ -338,17 +338,6 @@ def calc_pca3D(mpath, npath):
         xyz[i,:,:,1] = reshape(ym,(nsec,npps))
         xyz[i,:,:,2] = reshape(zm,(nsec,npps))    
 
-    '''
-    # center the measured data
-    xyzn_center = array([mean(xyzn[:,:,0]),mean(xyzn[:,:,1])])
-    for i in range(n):
-        xyz_center = array([mean(xyz[i,:,:,0]),mean(xyz[i,:,:,1])])
-        dx = xyzn_center[0] - xyz_center[0] 
-        dy = xyzn_center[1] - xyz_center[1]
-        xyz[i,:,:,0] += dx
-        xyz[i,:,:,1] += dy
-    '''
-
     # compute the chord at the hub to normalize by
     x0 = xyzn[0,:,:-1]
     chord = sqrt((x0[0,0]-x0[(npps+1)/2,0])**2 + (x0[0,1]-x0[(npps+1)/2,1])**2)
@@ -359,7 +348,7 @@ def calc_pca3D(mpath, npath):
 
         # calculate the error in the normal direction for this blade
         xe[i,:,:] = calcError(xyzn,nn,xyz[i,:,:,:],nm)
-
+        
     # print maximum error relative to chord
     print 'Max error/chord: ',abs(xe).max()/chord
 

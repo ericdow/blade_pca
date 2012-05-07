@@ -42,6 +42,18 @@ print 'BB modes required: ', nmodes_bb
 print 'Total modes required: ', nmodes_le+nmodes_te+nmodes_bb
 
 pylab.figure()
+pylab.semilogy(arange(n)+1,max_error_te,'ks',mfc='w',label='Trailing edge')
+pylab.semilogy(arange(n)+1,max_error_bb,'ko',mfc='w',label='Blade body')
+pylab.semilogy(arange(n)+1,max_error_le,'k*',label='Leading edge')
+pylab.ylim([1.0e-5,2.0*max(max_error_le)])
+pylab.grid(True)
+pylab.legend()
+pylab.xlabel('Number of modes in reconstruction')
+pylab.ylabel('Maximum error/chord')
+pylab.savefig(figdir+'max_error_weighted.png')
+
+'''
+pylab.figure()
 pylab.semilogy(arange(n)+1,max_error_le,'*')
 pylab.ylim([1.0e-5,2.0*max(max_error_le)])
 pylab.grid(True)
@@ -67,6 +79,7 @@ pylab.title('Blade body')
 pylab.xlabel('Number of modes in reconstruction')
 pylab.ylabel('Maximum error/chord')
 pylab.savefig(figdir+'max_error_bb.png')
+'''
 
 error
 
